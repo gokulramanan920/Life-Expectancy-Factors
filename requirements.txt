@@ -1,0 +1,8 @@
+pandas
+pycountry_convert
+altair
+geopandas
+shapely
+fiona
+pyproj
+rtree
