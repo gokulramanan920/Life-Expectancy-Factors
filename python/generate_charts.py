@@ -2,10 +2,11 @@ import pandas as pd
 import pycountry_convert as pc
 import altair as alt
 import geopandas as gpd
+import numpy as np
 
 """ Load and clean the data """
 
-df = pd.read_csv('../data/Global Health.csv')
+df = pd.read_csv('../Global Health.csv')
 
 def clean_col(name):
     name = name.lower()
@@ -165,3 +166,122 @@ animated_chart = bubble_chart.add_params(
 
 # Display
 animated_chart.save('../charts/gdp_life_expectancy_bubble_chart.html')
+
+
+""" Interactive Scatter Plot: Government Expenditure vs Life Expectancy with Dropdown """
+
+
+# Columns for dropdown
+expenditure_cols = [
+    'government expenditure health',
+    'government expenditure education',
+    'government expenditure military'
+]
+
+# Drop nulls only for needed columns *and country*
+df_clean = df[['country', 'life expectancy'] + expenditure_cols].dropna()
+
+# Add continent column
+df_clean['continent'] = df_clean['country'].apply(country_to_continent)
+
+# Filter countries where continent detection failed
+df_clean = df_clean.dropna(subset=['continent'])
+
+# Dropdown menu setup
+dropdown = alt.binding_select(options=expenditure_cols, name='Expenditure: ')
+selector = alt.param('exp', bind=dropdown, value=expenditure_cols[0])
+
+# Final Chart
+chart = (
+    alt.Chart(df_clean)
+    .transform_calculate(
+        expenditure='datum[exp]'
+    )
+    .mark_circle(size=60, opacity=0.7)
+    .encode(
+        x=alt.X('expenditure:Q', title='Government Expenditure'),
+        y=alt.Y('life expectancy:Q', title='Life Expectancy'),
+        color=alt.Color('continent:N', title='Continent'),
+        tooltip=[
+            alt.Tooltip('country:N', title='Country'),
+            alt.Tooltip('expenditure:Q', title='Expenditure'),
+            alt.Tooltip('life expectancy:Q', title='Life Expectancy'),
+            alt.Tooltip('continent:N', title='Continent'),
+        ]
+    )
+    .add_params(selector)
+    .properties(
+        width=700,
+        height=450,
+        title='Government Expenditure vs Life Expectancy by Continent'
+    )
+)
+
+chart.save('../charts/gov_expenditure_life_expectancy.html')
+
+
+
+df_sorted = df.sort_values(by='life expectancy')
+df_sorted = df_sorted[df_sorted['gender'] == 'Both sexes']
+
+df1, df2, df3 = np.array_split(df_sorted, 3)
+
+
+selectable_metrics = ['doctors', 'nurses and midwifes', 'pharmacists']
+df2['nurses and midwifes'] = df2['nurses and midwifes']/10
+
+
+dropdown = alt.binding_select(options=selectable_metrics, name='metrics: ')
+selector = alt.param('exp', bind=dropdown, value=selectable_metrics[0])
+
+
+df1_chart = (
+    alt.Chart(df1)
+    .mark_boxplot()
+    .add_params(selector)
+    .transform_calculate(
+        expenditure="datum[exp]"
+    )
+    .encode(
+        y=alt.Y('expenditure:Q', title='Healthcare Profession Count / 10000')
+    )
+    .properties(
+        width=200,
+        height=400,
+        title='Profession Count vs Lower Third Life Expectancies'
+    )
+)
+df2_chart = (
+    alt.Chart(df2)
+    .mark_boxplot()
+    .add_params(selector)
+    .transform_calculate(
+        expenditure="datum[exp]"
+    )
+    .encode(
+        y=alt.Y('expenditure:Q', title='Healthcare Profession Count / 10000')
+    )
+    .properties(
+        width=200,
+        height=400,
+        title='Profession Count vs Middle Third Life Expectancies'
+    )
+)
+
+df3_chart = (
+    alt.Chart(df3)
+    .mark_boxplot()
+    .add_params(selector)
+    .transform_calculate(
+        expenditure="datum[exp]"
+    )
+    .encode(
+        y=alt.Y('expenditure:Q', title='Healthcare Profession Count / 10000'),
+    )
+    .properties(
+        width=200,
+        height=400,
+        title='Profession Count vs Upper Third Life Expectancies'
+    )
+)
+(df1_chart | df2_chart | df3_chart).save('../charts/healthcare_profession_life_expectancy_boxplots.html')
