@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sanitation vs Life Expectancy KDE Plot</title>
+    <title>Global Health Data Visualizations</title>
     
     <!-- D3.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
@@ -12,80 +12,429 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            overflow-x: auto;
+            padding: 0 20px;
+        }
+        
+        .nav-tab {
+            padding: 18px 28px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-size: 15px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-tab:hover {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .nav-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+            background: white;
+        }
+        
+        .content-area {
+            padding: 40px;
+        }
+        
+        .chart-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        
+        .chart-section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(15px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        
+        .chart-info {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .chart-info h2 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 1.5em;
+        }
+        
+        .chart-info p {
+            color: #555;
+            line-height: 1.7;
+            font-size: 1.05em;
+        }
+        
+        .chart-wrapper {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .chart-wrapper iframe {
+            width: 100%;
+            height: 750px;
+            border: none;
+            display: block;
+        }
+        
+        .d3-chart-container {
+            min-height: 600px;
             display: flex;
             justify-content: center;
             align-items: center;
-        }
-        
-        .container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 1000px;
-        }
-        
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        #chart {
-            display: flex;
-            justify-content: center;
-        }
-        
-        .axis-label {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
         }
         
         .loading {
             text-align: center;
             color: #666;
             font-size: 16px;
-            padding: 40px;
+            padding: 60px 20px;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        .error-message {
+            background: #fee;
+            border: 2px solid #fcc;
+            padding: 20px;
+            border-radius: 12px;
+            color: #c33;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .error-message strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .error-message code {
+            background: rgba(0,0,0,0.05);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+            font-size: 0.9em;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        
+        .icon {
+            font-size: 1.2em;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .nav-tab {
+                padding: 15px 20px;
+                font-size: 14px;
+            }
+            
+            .content-area {
+                padding: 20px;
+            }
+            
+            .chart-wrapper iframe {
+                height: 500px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Sanitation vs Life Expectancy</h1>
-        <div class="subtitle">Kernel Density Estimation Plot</div>
-        <div id="chart">
-            <div class="loading">Loading data...</div>
+    <div class="main-container">
+        <div class="header">
+            <h1>🌍 Global Health Data Visualizations</h1>
+            <p>Interactive analysis of health, wealth, and lifestyle factors across nations</p>
         </div>
-        <div class="tooltip" id="tooltip"></div>
+        
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showChart('about')">
+                <span class="icon">📖</span>
+                <span>About</span>
+            </button>
+            <button class="nav-tab" onclick="showChart('chart1')">
+                <span class="icon">🥗</span>
+                <span>Fruit & Vegetables</span>
+            </button>
+            <button class="nav-tab" onclick="showChart('chart2')">
+                <span class="icon">💰</span>
+                <span>Wealth & Health</span>
+            </button>
+            <button class="nav-tab" onclick="showChart('chart3')">
+                <span class="icon">🏛️</span>
+                <span>Gov. Expenditure</span>
+            </button>
+            <button class="nav-tab" onclick="showChart('chart4')">
+                <span class="icon">🚰</span>
+                <span>Sanitation (KDE)</span>
+            </button>
+            <button class="nav-tab" onclick="showChart('chart5')">
+                <span class="icon">⚕️</span>
+                <span>Healthcare Profession</span>
+            </button>
+        </div>
+        
+        <div class="content-area">
+            <!-- About Section -->
+            <div id="about" class="chart-section active">
+                <div class="chart-info">
+                    <h2>📖 About This Project</h2>
+                    <p style="margin-bottom: 20px;">This interactive dashboard explores the complex relationships between various health, economic, and lifestyle factors that influence life expectancy across nations. Through data visualization, we uncover patterns and insights from global health data.</p>
+                </div>
+                
+                <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">🎯 Project Overview</h3>
+                    <p style="line-height: 1.8; color: #555; margin-bottom: 20px;">
+                        This project analyzes global health data to understand what factors contribute to longer, healthier lives. 
+                        By examining nutrition, wealth, government spending, sanitation, and healthcare infrastructure, 
+                        we can identify key drivers of population health outcomes.
+                    </p>
+                    
+                    <h3 style="color: #667eea; margin-bottom: 15px;">📊 Visualizations</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <h4 style="margin-top: 0; color: #333;">🥗 Fruit & Vegetables</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.95em;">
+                                Explores the relationship between fruit and vegetable consumption and life expectancy across continents.
+                            </p>
+                        </div>
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <h4 style="margin-top: 0; color: #333;">💰 Wealth & Health</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.95em;">
+                                An animated view of how GDP per capita correlates with life expectancy over time (1990-2019).
+                            </p>
+                        </div>
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <h4 style="margin-top: 0; color: #333;">🏛️ Government Expenditure</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.95em;">
+                                Compares health, education, and military spending with life expectancy outcomes.
+                            </p>
+                        </div>
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <h4 style="margin-top: 0; color: #333;">🚰 Sanitation (KDE)</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.95em;">
+                                A density visualization showing how sanitation access impacts population health.
+                            </p>
+                        </div>
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <h4 style="margin-top: 0; color: #333;">⚕️ Healthcare Professionals</h4>
+                            <p style="margin: 0; color: #666; font-size: 0.95em;">
+                                Analyzes the impact of healthcare workforce density on life expectancy.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <h3 style="color: #667eea; margin-bottom: 15px;">💡 References</h3>
+                    <ul style="line-height: 1.8; color: #555;">
+                        <li><a href="https://www.nature.com/articles/s41598-020-63843-6">Reference 1</a></li>
+                        <li><a href="https://www.researchgate.net/publication/391397521_Factors_Influencing_Life_Expectancy_Global_Evidence_from_125_Countries">Reference 2</a></li>
+                        
+                    </ul>
+                    
+                    <h3 style="color: #667eea; margin-bottom: 15px;">🔧 Technologies Used</h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                        <span style="background: #667eea; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em;">Python</span>
+                        <span style="background: #667eea; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em;">Altair</span>
+                        <span style="background: #667eea; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em;">D3.js</span>
+                        <span style="background: #667eea; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em;">Pandas</span>
+                        <span style="background: #667eea; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.9em;">HTML/CSS</span>
+                    </div>
+                    
+                    <h3 style="color: #667eea; margin-bottom: 15px;">📚 Data Source</h3>
+                    <p style="line-height: 1.8; color: #555; margin-bottom: 0;">
+                        This project uses the <a href="https://www.kaggle.com/datasets/miguelroca/global-health-nutrition-mortality-economic-data">Global Health dataset</a>, which aggregates health, economic, and lifestyle indicators 
+                        from various international sources. The data provides comprehensive coverage of health determinants 
+                        across multiple countries and time periods.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Chart 1: Fruit & Vegetables -->
+            <div id="chart1" class="chart-section">
+                <div class="chart-info">
+                    <h2>🥗 Diet Composition: Fruit & Vegetables vs Life Expectancy</h2>
+                    <p>This scatter plot explores the relationship between fruit and vegetable consumption (measured in kcal/person/day) and life expectancy across different countries and continents. The black LOWESS curve reveals the overall trend in the data.</p>
+                </div>
+                <div class="chart-wrapper">
+                    <iframe src="charts/fruit_vegetable_life_expectancy.html"></iframe>
+                </div>
+            </div>
+            
+            <!-- Chart 2: GDP Bubble Chart -->
+            <div id="chart2" class="chart-section">
+                <div class="chart-info">
+                    <h2>💰 The Wealth and Health of Nations</h2>
+                    <p>An animated bubble chart showing the fascinating relationship between GDP per capita and life expectancy from 1990-2019. Bubble size represents population. Use the year slider to watch how countries evolved over three decades!</p>
+                </div>
+                <div class="chart-wrapper">
+                    <iframe src="charts/gdp_life_expectancy_bubble_chart.html"></iframe>
+                </div>
+            </div>
+            
+            <!-- Chart 3: Government Expenditure -->
+            <div id="chart3" class="chart-section">
+                <div class="chart-info">
+                    <h2>🏛️ Government Expenditure vs Life Expectancy</h2>
+                    <p>Explore how different types of government spending correlate with life expectancy. Use the dropdown menu to switch between health, education, and military expenditure across continents.</p>
+                </div>
+                <div class="chart-wrapper">
+                    <iframe src="charts/gov_expenditure_life_expectancy.html"></iframe>
+                </div>
+            </div>
+            
+            <!-- Chart 4: Sanitation KDE -->
+            <div id="chart4" class="chart-section">
+                <div class="chart-info">
+                    <h2>🚰 Sanitation vs Life Expectancy (KDE Plot)</h2>
+                    <p>A Kernel Density Estimation visualization showing the distribution and relationship between sanitation access and life expectancy. This D3.js interactive visualization provides detailed insights into this critical health factor.</p>
+                </div>
+                <div class="chart-wrapper">
+                    <iframe src="charts/sanitation_kde.html"></iframe>
+                </div>
+            </div>
+            
+            <!-- Chart 5: Healthcare Profession -->
+            <div id="chart5" class="chart-section">
+                <div class="chart-info">
+                    <h2>⚕️ Healthcare Professionals vs Life Expectancy</h2>
+                    <p>Analyzing the impact of healthcare workforce density on population health outcomes across different nations and regions.</p>
+                </div>
+                <div class="chart-wrapper">
+                    <iframe src="charts/healthcare_profession_life_expectancy.html"></iframe>
+                </div>
+            </div>
+        </div>
     </div>
+    
+    <div class="tooltip" id="tooltip"></div>
 
-    <!-- External JavaScript file -->
-    <script src="d3_viz.js"></script>
+    <script>
+        function showChart(chartId) {
+            // Hide all chart sections
+            document.querySelectorAll('.chart-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected chart
+            document.getElementById(chartId).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.closest('.nav-tab').classList.add('active');
+        }
+        
+        // Handle iframe load errors
+        document.querySelectorAll('iframe').forEach(iframe => {
+            iframe.onerror = function() {
+                const wrapper = this.parentElement;
+                wrapper.innerHTML = `
+                    <div class="error-message">
+                        <strong>⚠️ Chart Not Found</strong>
+                        <p>Could not load: <code>${this.src}</code></p>
+                        <p>Make sure your Python script has generated the chart files.</p>
+                    </div>
+                `;
+            };
+        });
+    </script>
 </body>
 </html>
