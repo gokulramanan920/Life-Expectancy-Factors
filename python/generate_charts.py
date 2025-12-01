@@ -199,7 +199,7 @@ chart = (
     )
     .mark_circle(size=60, opacity=0.7)
     .encode(
-        x=alt.X('expenditure:Q', title='Government Expenditure'),
+        x=alt.X('expenditure:Q', title='Government Expenditure (%)'),
         y=alt.Y('life expectancy:Q', title='Life Expectancy'),
         color=alt.Color('continent:N', title='Continent'),
         tooltip=[
@@ -284,4 +284,4 @@ df3_chart = (
         title='Profession Count vs Upper Third Life Expectancies'
     )
 )
-(df1_chart | df2_chart | df3_chart).save('../charts/healthcare_profession_life_expectancy_boxplots.html')
+(df1_chart | df2_chart | df3_chart).save('../charts/healthcare_profession_life_expectancy.html')
