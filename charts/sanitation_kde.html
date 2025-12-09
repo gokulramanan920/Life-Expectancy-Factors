@@ -8,6 +8,9 @@
     <!-- D3.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     
+    <!-- D3 Contour for density visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-contour/4.0.2/d3-contour.min.js"></script>
+    
     <!-- PapaParse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
@@ -31,6 +34,13 @@
         .axis-label {
             font-size: 14px;
             font-weight: 600;
+        }
+        
+        .contour-path {
+            fill: none;
+            stroke: #666;
+            stroke-width: 1.5;
+            stroke-linejoin: round;
         }
         
         .tooltip {
@@ -70,17 +80,25 @@
     <div class="tooltip" id="tooltip"></div>
 
     <script>
+        // Color scheme matching your other visualizations
+        const continentColors = {
+            'Africa': '#4e79a7',      // Blue
+            'Asia': '#f28e2c',        // Orange
+            'Europe': '#e15759',      // Red
+            'North America': '#76b7b2', // Teal
+            'Oceania': '#59a14f',     // Green
+            'South America': '#edc949' // Yellow
+        };
+
         // D3 KDE Visualization for Sanitation vs Life Expectancy
         async function loadAndVisualize() {
             try {
-                // Load CSV file - adjust path relative to this HTML file
                 const response = await fetch('../Global Health.csv');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const fileData = await response.text();
                 
-                // Parse CSV
                 const parsed = Papa.parse(fileData, {
                     header: true,
                     dynamicTyping: true,
@@ -89,32 +107,30 @@
 
                 let data = parsed.data;
                 
-                // Debug: Log the first row to see column names
                 if (data.length > 0) {
                     console.log('Available columns:', Object.keys(data[0]));
-                    console.log('First row:', data[0]);
                 }
                 
-                // Try to find the correct column names
                 const sanitationCol = Object.keys(data[0]).find(key => 
                     key.toLowerCase().includes('sanitation') && key.toLowerCase().includes('total')
                 );
                 const lifeExpectancyCol = Object.keys(data[0]).find(key => 
                     key.toLowerCase().includes('life') && key.toLowerCase().includes('expectancy')
                 );
+                const continentCol = Object.keys(data[0]).find(key => 
+                    key.toLowerCase().includes('continent')
+                );
                 
-                console.log('Sanitation column found:', sanitationCol);
-                console.log('Life expectancy column found:', lifeExpectancyCol);
+                console.log('Sanitation column:', sanitationCol);
+                console.log('Life expectancy column:', lifeExpectancyCol);
+                console.log('Continent column:', continentCol);
                 
                 if (!sanitationCol || !lifeExpectancyCol) {
                     document.getElementById('chart').innerHTML = 
-                        `<div class="error-message">Could not find required columns.<br><br>
-                        Available columns: ${Object.keys(data[0]).join(', ')}<br><br>
-                        Looking for columns containing "sanitation" and "life expectancy"</div>`;
+                        `<div class="error-message">Could not find required columns.</div>`;
                     return;
                 }
                 
-                // Filter out rows with missing values
                 data = data.filter(d => 
                     d[sanitationCol] != null && 
                     d[lifeExpectancyCol] != null &&
@@ -130,24 +146,21 @@
 
                 console.log(`Loaded ${data.length} valid data points`);
 
-                // Create the visualization
-                createKDEPlot(data, sanitationCol, lifeExpectancyCol);
+                createKDEPlot(data, sanitationCol, lifeExpectancyCol, continentCol);
                 
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('chart').innerHTML = 
-                    `<div class="error-message">Error loading data: ${error.message}<br><br>
-                    Make sure 'Global Health.csv' is in the parent directory.</div>`;
+                    `<div class="error-message">Error loading data: ${error.message}</div>`;
             }
         }
 
-        function createKDEPlot(data, sanitationCol, lifeExpectancyCol) {
-            // Clear loading message
+        function createKDEPlot(data, sanitationCol, lifeExpectancyCol, continentCol) {
             document.getElementById('chart').innerHTML = '';
 
-            const margin = { top: 20, right: 40, bottom: 60, left: 70 };
-            const width = 900 - margin.left - margin.right;
-            const height = 600 - margin.top - margin.bottom;
+            const margin = { top: 40, right: 40, bottom: 70, left: 70 };
+            const width = 1000 - margin.left - margin.right;
+            const height = 650 - margin.top - margin.bottom;
 
             const svg = d3.select("#chart")
                 .append("svg")
@@ -156,91 +169,83 @@
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
 
-            // Get data ranges
-            const xExtent = d3.extent(data, d => d[sanitationCol]);
-            const yExtent = d3.extent(data, d => d[lifeExpectancyCol]);
-
             // Scales
             const x = d3.scaleLinear()
-                .domain([Math.max(0, xExtent[0] - 5), Math.min(100, xExtent[1] + 5)])
+                .domain([0, 100])
                 .range([0, width]);
 
             const y = d3.scaleLinear()
-                .domain([yExtent[0] - 5, yExtent[1] + 5])
+                .domain([30, 90])
                 .range([height, 0]);
 
-            // Calculate 2D density
-            const gridSize = 40;
-            const gridData = [];
-            const bandwidth = (xExtent[1] - xExtent[0]) / 10; // Adaptive bandwidth
+            // Calculate 2D density for contours
+            const densityData = d3.contourDensity()
+                .x(d => x(d[sanitationCol]))
+                .y(d => y(d[lifeExpectancyCol]))
+                .size([width, height])
+                .bandwidth(30)
+                .thresholds(15)
+                (data);
 
-            for (let i = 0; i < gridSize; i++) {
-                for (let j = 0; j < gridSize; j++) {
-                    const xVal = x.domain()[0] + (x.domain()[1] - x.domain()[0]) * i / gridSize;
-                    const yVal = y.domain()[0] + (y.domain()[1] - y.domain()[0]) * j / gridSize;
-                    
-                    let density = 0;
-                    data.forEach(d => {
-                        const dx = (xVal - d[sanitationCol]) / bandwidth;
-                        const dy = (yVal - d[lifeExpectancyCol]) / (bandwidth * 0.5);
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        density += Math.exp(-0.5 * distance * distance);
-                    });
-                    
-                    gridData.push({
-                        x: xVal,
-                        y: yVal,
-                        density: density
-                    });
-                }
-            }
+            // Get min and max density values
+            const minDensity = d3.min(densityData, d => d.value);
+            const maxDensity = d3.max(densityData, d => d.value);
 
-            // Color scale
-            const colorScale = d3.scaleSequential(d3.interpolateViridis)
-                .domain([0, d3.max(gridData, d => d.density)]);
+            console.log('Min density:', minDensity, 'Max density:', maxDensity);
+            console.log('Total data points:', data.length);
 
-            // Draw density heatmap
-            svg.selectAll("rect")
-                .data(gridData)
+            // Color scale for contours
+            const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
+                .domain([minDensity, maxDensity]);
+
+            // Draw filled contours
+            svg.selectAll("path.density")
+                .data(densityData)
                 .enter()
-                .append("rect")
-                .attr("x", d => x(d.x))
-                .attr("y", d => y(d.y))
-                .attr("width", width / gridSize + 1)
-                .attr("height", height / gridSize + 1)
-                .attr("fill", d => colorScale(d.density))
-                .attr("opacity", 0.7);
+                .append("path")
+                .attr("class", "density")
+                .attr("d", d3.geoPath())
+                .attr("fill", d => colorScale(d.value))
+                .attr("opacity", 0.6)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 0.5);
 
             // Tooltip
             const tooltip = d3.select("#tooltip");
 
-            // Draw scatter points
+            // Draw scatter points colored by continent
             svg.selectAll("circle")
                 .data(data)
                 .enter()
                 .append("circle")
                 .attr("cx", d => x(d[sanitationCol]))
                 .attr("cy", d => y(d[lifeExpectancyCol]))
-                .attr("r", 3)
-                .attr("fill", "#ff6b6b")
+                .attr("r", 4)
+                .attr("fill", d => continentCol ? (continentColors[d[continentCol]] || '#999') : '#4e79a7')
                 .attr("stroke", "white")
                 .attr("stroke-width", 1)
-                .attr("opacity", 0.6)
+                .attr("opacity", 0.7)
                 .on("mouseover", function(event, d) {
                     d3.select(this)
-                        .attr("r", 6)
-                        .attr("opacity", 1);
+                        .attr("r", 7)
+                        .attr("opacity", 1)
+                        .attr("stroke-width", 2);
                     
                     tooltip
                         .style("opacity", 1)
-                        .html(`Sanitation: ${d[sanitationCol].toFixed(1)}%<br>Life Expectancy: ${d[lifeExpectancyCol].toFixed(1)} years`)
+                        .html(`
+                            ${continentCol && d[continentCol] ? `<strong>${d[continentCol]}</strong><br>` : ''}
+                            Sanitation: ${d[sanitationCol].toFixed(1)}%<br>
+                            Life Expectancy: ${d[lifeExpectancyCol].toFixed(1)} years
+                        `)
                         .style("left", (event.pageX + 10) + "px")
                         .style("top", (event.pageY - 10) + "px");
                 })
                 .on("mouseout", function() {
                     d3.select(this)
-                        .attr("r", 3)
-                        .attr("opacity", 0.6);
+                        .attr("r", 4)
+                        .attr("opacity", 0.7)
+                        .attr("stroke-width", 1);
                     
                     tooltip.style("opacity", 0);
                 });
@@ -248,7 +253,7 @@
             // X axis
             svg.append("g")
                 .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(x))
+                .call(d3.axisBottom(x).ticks(10))
                 .selectAll("text")
                 .style("font-size", "12px");
 
@@ -261,7 +266,7 @@
             // Title
             svg.append("text")
                 .attr("x", width / 2)
-                .attr("y", -5)
+                .attr("y", -15)
                 .attr("text-anchor", "middle")
                 .style("font-size", "20px")
                 .style("font-weight", "600")
@@ -272,7 +277,7 @@
             svg.append("text")
                 .attr("class", "axis-label")
                 .attr("x", width / 2)
-                .attr("y", height + 45)
+                .attr("y", height + 50)
                 .attr("text-anchor", "middle")
                 .text("Safely Managed Sanitation (% of population)");
 
@@ -285,36 +290,48 @@
                 .attr("text-anchor", "middle")
                 .text("Life Expectancy (years)");
 
-            // Add legend
+            // Add density legend (bottom left)
             const legendWidth = 200;
-            const legendHeight = 10;
-            const legendScale = d3.scaleLinear()
-                .domain(colorScale.domain())
-                .range([0, legendWidth]);
-
+            const legendHeight = 15;
+            
             const legend = svg.append("g")
-                .attr("transform", `translate(${width - legendWidth - 20}, ${height - 30})`);
+                .attr("transform", `translate(20, ${height - 50})`);
 
-            const legendAxis = d3.axisBottom(legendScale)
-                .ticks(5)
-                .tickFormat(d3.format(".0f"));
-
-            // Legend gradient
+            // Create gradient for legend
             const defs = svg.append("defs");
             const gradient = defs.append("linearGradient")
-                .attr("id", "legend-gradient");
+                .attr("id", "density-gradient")
+                .attr("x1", "0%")
+                .attr("x2", "100%")
+                .attr("y1", "0%")
+                .attr("y2", "0%");
 
-            gradient.selectAll("stop")
-                .data(d3.range(0, 1.1, 0.1))
-                .enter()
-                .append("stop")
-                .attr("offset", d => `${d * 100}%`)
-                .attr("stop-color", d => colorScale(d * d3.max(gridData, g => g.density)));
+            // Add color stops to gradient
+            const numStops = 10;
+            for (let i = 0; i <= numStops; i++) {
+                const offset = i / numStops;
+                const densityValue = minDensity + (maxDensity - minDensity) * offset;
+                gradient.append("stop")
+                    .attr("offset", `${offset * 100}%`)
+                    .attr("stop-color", colorScale(densityValue));
+            }
 
+            // Draw legend rectangle
             legend.append("rect")
                 .attr("width", legendWidth)
                 .attr("height", legendHeight)
-                .style("fill", "url(#legend-gradient)");
+                .style("fill", "url(#density-gradient)")
+                .style("stroke", "#999")
+                .style("stroke-width", 1);
+
+            // Add legend axis with actual density values
+            const legendScale = d3.scaleLinear()
+                .domain([0, 1000])
+                .range([0, legendWidth]);
+
+            const legendAxis = d3.axisBottom(legendScale)
+                .ticks(5)
+                .tickFormat(d => d.toFixed(0));
 
             legend.append("g")
                 .attr("transform", `translate(0, ${legendHeight})`)
@@ -322,15 +339,16 @@
                 .selectAll("text")
                 .style("font-size", "10px");
 
+            // Legend title
             legend.append("text")
                 .attr("x", legendWidth / 2)
                 .attr("y", -5)
                 .attr("text-anchor", "middle")
-                .style("font-size", "11px")
+                .style("font-size", "12px")
+                .style("font-weight", "600")
                 .text("Density");
         }
 
-        // Load data when page loads
         window.addEventListener('DOMContentLoaded', loadAndVisualize);
     </script>
 </body>

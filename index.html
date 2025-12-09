@@ -248,19 +248,19 @@
                 <span>About</span>
             </button>
             <button class="nav-tab" onclick="showChart('chart1')">
-                <span>Fruit & Vegetables</span>
-            </button>
-            <button class="nav-tab" onclick="showChart('chart2')">
                 <span>Wealth & Health</span>
             </button>
-            <button class="nav-tab" onclick="showChart('chart3')">
+            <button class="nav-tab" onclick="showChart('chart2')">
                 <span>Gov. Expenditure</span>
             </button>
-            <button class="nav-tab" onclick="showChart('chart4')">
+            <button class="nav-tab" onclick="showChart('chart3')">
                 <span>Sanitation (KDE)</span>
             </button>
-            <button class="nav-tab" onclick="showChart('chart5')">
+            <button class="nav-tab" onclick="showChart('chart4')">
                 <span>Healthcare Profession</span>
+            </button>
+            <button class="nav-tab" onclick="showChart('chart5')">
+                <span>Fruit & Vegetables</span>
             </button>
         </div>
         
@@ -358,27 +358,8 @@
                 </div>
             </div>
             
-            <!-- Chart 1: Fruit & Vegetables -->
+            <!-- Chart 1: GDP Bubble Chart -->
             <div id="chart1" class="chart-section">
-                <div class="chart-info">
-                    <h2>Diet Composition: Fruit & Vegetables vs Life Expectancy</h2>
-                    <p>This scatter plot explores the relationship between fruit and vegetable consumption (measured in kcal/person/day) and life expectancy across different countries and continents. The black LOWESS curve reveals the overall trend in the data.</p>
-                </div>
-                <div class="chart-wrapper">
-                    <iframe src="charts/fruit_vegetable_life_expectancy.html"></iframe>
-                    <h3 style="color: #667eea; margin-bottom: 15px;">Visualization Description:</h3>
-                    <p style="line-height: 1.8; color: #555; margin-bottom: 0px;">
-                        The x-values present the amount of calories in fruit & vegetables that a person may consume on average per day in a specific country. The y-values correlate to the average life expectancies of people in a specific country. 
-                        The data is separated into regions to allow for better understanding of which regions overall follow certain patterns in terms of their dietary habits, allowing us to dissect the data further. Additionally, the visualization 
-                        allows for zooming in and out for better clarity regarding data points in a specific region or quadrant. The purpose of the plot is to understand whether healthy dietary habits such as eating fruits/vegetables contribute 
-                        positively to the average life span of individuals globally. 
-                    </p>
-
-                </div>
-            </div>
-            
-            <!-- Chart 2: GDP Bubble Chart -->
-            <div id="chart2" class="chart-section">
                 <div class="chart-info">
                     <h2>The Wealth and Health of Nations</h2>
                     <p>An animated bubble chart showing the fascinating relationship between GDP per capita and life expectancy from 1990-2019. Bubble size represents population. Use the year slider to watch how countries evolved over three decades!</p>
@@ -395,27 +376,28 @@
                 </div>
             </div>
             
-            <!-- Chart 3: Government Expenditure -->
-            <div id="chart3" class="chart-section">
+            <!-- Chart 2: Government Expenditure -->
+            <div id="chart2" class="chart-section">
                 <div class="chart-info">
                     <h2>Government Expenditure vs Life Expectancy</h2>
-                    <p>Explore how different types of government spending correlate with life expectancy. Use the dropdown menu to switch between health, education, and military expenditure across continents.</p>
+                    <p>Explore how different types of government spending affect with life expectancy. Use the dropdown menu to switch between health, education, and military expenditure across continents.</p>
                 </div>
                 <div class="chart-wrapper">
                     <iframe src="charts/gov_expenditure_life_expectancy.html"></iframe>
                     <h3 style="color: #667eea; margin-bottom: 15px;">Visualization Description:</h3>
                     <p style="line-height: 1.8; color: #555; margin-bottom: 0px;">
-                        There is one scatter plot. The x-values in the plot represent the amount of money (as a percentage of their overall budget) a government of a nation has allocated towards a certain expenditure, which can be altered through 
-                        selecting in the drop-down tool. The y-values in the plot represent the average life expectancies of those nations where the government has spent a certain amount towards a sector. The purpose of the plot is to understand 
-                        if there are trends globally or regionally between government expenditures and life expectancy. The plot separates the points into colors regionally to allow for better understanding of what the points represent and for 
-                        readability.
+                        This visualization combines a bar chart with an overlaid scatter plot to compare government expenditure patterns and life expectancy across continents. The colored bars represent the average 
+                        life expectancy for each continent (left y-axis in years), while the black circular points overlaid on each bar show the average government expenditure as a percentage of budget (right y-axis). 
+                        The expenditure type can be changed using the dropdown menu to explore health, education, or military spending. Each continent is represented by a distinct color for readability and quick regional 
+                        comparisons. By aggregating data at the continental level, this chart reveals broader patterns in how government spending priorities correlate with population health outcomes, making it easier to 
+                        identify which regions invest more heavily in specific sectors and how those investment patterns relate to life expectancy across the globe.
                     </p>
 
                 </div>
             </div>
             
-            <!-- Chart 4: Sanitation KDE -->
-            <div id="chart4" class="chart-section">
+            <!-- Chart 3: Sanitation KDE -->
+            <div id="chart3" class="chart-section">
                 <div class="chart-info">
                     <h2>Sanitation vs Life Expectancy (KDE Plot)</h2>
                     <p>A Kernel Density Estimation visualization showing the distribution and relationship between sanitation access and life expectancy. This D3.js interactive visualization provides detailed insights into this critical health factor.</p>
@@ -432,8 +414,8 @@
                 </div>
             </div>
             
-            <!-- Chart 5: Healthcare Profession -->
-            <div id="chart5" class="chart-section">
+            <!-- Chart 4: Healthcare Profession -->
+            <div id="chart4" class="chart-section">
                 <div class="chart-info">
                     <h2>Healthcare Professionals vs Life Expectancy</h2>
                     <p>Analyzing the impact of healthcare workforce density on population health outcomes across different nations and regions.</p>
@@ -449,6 +431,25 @@
                         lower life expectancies in contrast to those with higher life expectancies (on average). Healthcare staff members include doctors, 
                         pharmacists, and nurses & midwives. The visualization allows us to understand whether there is a correlation to healthcare staffing 
                         and life expectancies. 
+                    </p>
+
+                </div>
+            </div>
+
+            <!-- Chart 5: Fruit & Vegetables -->
+            <div id="chart5" class="chart-section">
+                <div class="chart-info">
+                    <h2>Diet Composition: Fruit & Vegetables vs Life Expectancy</h2>
+                    <p>This scatter plot explores the relationship between fruit and vegetable consumption (measured in kcal/person/day) and life expectancy across different countries and continents. The black LOWESS curve reveals the overall trend in the data.</p>
+                </div>
+                <div class="chart-wrapper">
+                    <iframe src="charts/fruit_vegetable_life_expectancy.html"></iframe>
+                    <h3 style="color: #667eea; margin-bottom: 15px;">Visualization Description:</h3>
+                    <p style="line-height: 1.8; color: #555; margin-bottom: 0px;">
+                        The x-values present the amount of calories in fruit & vegetables that a person may consume on average per day in a specific country. The y-values correlate to the average life expectancies of people in a specific country. 
+                        The data is separated into regions to allow for better understanding of which regions overall follow certain patterns in terms of their dietary habits, allowing us to dissect the data further. Additionally, the visualization 
+                        allows for zooming in and out for better clarity regarding data points in a specific region or quadrant. The purpose of the plot is to understand whether healthy dietary habits such as eating fruits/vegetables contribute 
+                        positively to the average life span of individuals globally. 
                     </p>
 
                 </div>

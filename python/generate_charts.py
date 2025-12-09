@@ -52,7 +52,14 @@ alt.data_transformers.disable_max_rows()
 """ Scatter plot: Diet Composition - Fruit and Vegetables vs Life Expectancy """
 
 # Remove null values in the alcoholic beverages column
-df_scatter = df_both.dropna(subset=['diet composition fruit and vegetables', 'life expectancy'])
+df_scatter = df_both.dropna(subset=['diet composition fruit and vegetables', 'life expectancy', 'continent'])
+
+# Create continent multi-select
+continent_selection = alt.selection_point(
+    fields=['continent'],
+    bind='legend',
+    toggle='true'
+)
 
 # Create the scatter plot with points colored by continent
 scatter = alt.Chart(df_scatter).mark_circle(size=60, opacity=0.7).encode(
@@ -63,12 +70,15 @@ scatter = alt.Chart(df_scatter).mark_circle(size=60, opacity=0.7).encode(
     color=alt.Color('continent:N',
                     title='Continent',
                     scale=alt.Scale(scheme='category10')),
+    opacity=alt.condition(continent_selection, alt.value(0.7), alt.value(0.1)),
     tooltip=[
         alt.Tooltip('country:N', title='Country'),
         alt.Tooltip('diet composition fruit and vegetables:Q', title='Fruit & Vegetable %', format='.2f'),
         alt.Tooltip('life expectancy:Q', title='Life Expectancy', format='.2f'),
         alt.Tooltip('continent:N', title='Continent')
     ]
+).add_params(
+    continent_selection
 ).properties(
     width=700,
     height=500,
@@ -91,12 +101,10 @@ lowess_curve = alt.Chart(df_scatter).transform_loess(
 
 # Combine scatter plot and LOWESS curve
 final_plot = (scatter + lowess_curve).interactive()
-
 final_plot.save('../charts/fruit_vegetable_life_expectancy.html')
 
 
 """ Animated Bubble Chart: GDP per Capita vs Life Expectancy over Time """
-
 # Prepare data - drop nulls for the required columns
 df_gapminder = df_both.dropna(subset=['gdp per capita', 'life expectancy', 'total population', 'continent', 'year']).copy()
 
@@ -104,6 +112,13 @@ df_gapminder = df_both.dropna(subset=['gdp per capita', 'life expectancy', 'tota
 years = sorted(df_gapminder['year'].unique())
 print(f"Year range: {years[0]} to {years[-1]}")
 print(f"Number of countries: {df_gapminder['country'].nunique()}")
+
+# Create continent multi-select for bubble chart
+continent_selection_bubble = alt.selection_point(
+    fields=['continent'],
+    bind='legend',
+    toggle='true'
+)
 
 # Create the animated bubble chart
 bubble_chart = alt.Chart(df_gapminder).mark_circle(
@@ -124,6 +139,7 @@ bubble_chart = alt.Chart(df_gapminder).mark_circle(
     color=alt.Color('continent:N',
                     scale=alt.Scale(scheme='category10'),
                     legend=alt.Legend(title='Continent')),
+    opacity=alt.condition(continent_selection_bubble, alt.value(0.7), alt.value(0.1)),
     tooltip=[
         alt.Tooltip('country:N', title='Country'),
         alt.Tooltip('year:O', title='Year'),
@@ -150,7 +166,6 @@ year_slider = alt.binding_range(
     step=1,
     name='Year: '
 )
-
 year_selection = alt.selection_point(
     fields=['year'],
     bind=year_slider,
@@ -159,7 +174,8 @@ year_selection = alt.selection_point(
 
 # Apply selection and filter
 animated_chart = bubble_chart.add_params(
-    year_selection
+    year_selection,
+    continent_selection_bubble
 ).transform_filter(
     year_selection
 ).interactive()
@@ -168,8 +184,7 @@ animated_chart = bubble_chart.add_params(
 animated_chart.save('../charts/gdp_life_expectancy_bubble_chart.html')
 
 
-""" Interactive Scatter Plot: Government Expenditure vs Life Expectancy with Dropdown """
-
+""" Interactive Dual-Axis Chart: Government Expenditure vs Life Expectancy with Dropdown """
 
 # Columns for dropdown
 expenditure_cols = [
@@ -191,34 +206,56 @@ df_clean = df_clean.dropna(subset=['continent'])
 dropdown = alt.binding_select(options=expenditure_cols, name='Expenditure: ')
 selector = alt.param('exp', bind=dropdown, value=expenditure_cols[0])
 
-# Final Chart
-chart = (
-    alt.Chart(df_clean)
-    .transform_calculate(
-        expenditure='datum[exp]'
-    )
-    .mark_circle(size=60, opacity=0.7)
-    .encode(
-        x=alt.X('expenditure:Q', title='Government Expenditure (%)'),
-        y=alt.Y('life expectancy:Q', title='Life Expectancy'),
-        color=alt.Color('continent:N', title='Continent'),
-        tooltip=[
-            alt.Tooltip('country:N', title='Country'),
-            alt.Tooltip('expenditure:Q', title='Expenditure'),
-            alt.Tooltip('life expectancy:Q', title='Life Expectancy'),
-            alt.Tooltip('continent:N', title='Continent'),
-        ]
-    )
-    .add_params(selector)
-    .properties(
-        width=700,
-        height=450,
-        title='Government Expenditure vs Life Expectancy by Continent'
-    )
+# Aggregate data by continent
+df_agg = df_clean.groupby('continent').agg({
+    'life expectancy': 'mean',
+    'government expenditure health': 'mean',
+    'government expenditure education': 'mean',
+    'government expenditure military': 'mean'
+}).reset_index()
+
+# Create base chart with transform
+base = alt.Chart(df_agg).transform_calculate(
+    avg_expenditure='datum[exp]'
+).add_params(selector)
+
+# Bar chart for average life expectancy
+bars = base.mark_bar(opacity=0.7).encode(
+    x=alt.X('continent:N', title='Continent', axis=alt.Axis(labelAngle=0)),
+    y=alt.Y('life expectancy:Q', title='Average Life Expectancy (years)', scale=alt.Scale(zero=False)),
+    color=alt.Color('continent:N', title='Continent', legend=None),
+    tooltip=[
+        alt.Tooltip('continent:N', title='Continent'),
+        alt.Tooltip('life expectancy:Q', title='Avg Life Expectancy', format='.2f'),
+        alt.Tooltip('avg_expenditure:Q', title='Avg Expenditure (%)', format='.2f')
+    ]
+)
+
+# Scatter plot for average government expenditure
+points = base.mark_circle(size=200, opacity=1, filled=True, color='black').encode(
+    x=alt.X('continent:N', title='Continent'),
+    y=alt.Y('avg_expenditure:Q', title='Average Government Expenditure (%)', 
+            scale=alt.Scale(zero=False)),
+    tooltip=[
+        alt.Tooltip('continent:N', title='Continent'),
+        alt.Tooltip('life expectancy:Q', title='Avg Life Expectancy', format='.2f'),
+        alt.Tooltip('avg_expenditure:Q', title='Avg Expenditure (%)', format='.2f')
+    ]
+)
+
+# Combine with dual axis
+chart = alt.layer(
+    bars,
+    points
+).resolve_scale(
+    y='independent'
+).properties(
+    width=700,
+    height=450,
+    title='Government Expenditure vs Life Expectancy by Continent'
 )
 
 chart.save('../charts/gov_expenditure_life_expectancy.html')
-
 
 
 df_sorted = df.sort_values(by='life expectancy')
